@@ -54,7 +54,7 @@ const int anode_pin = 8;
 
 const int address_pins[3] = { 6, 5, 4 };  // A, B, C
 const int amplitude_pin_num = 5;
-const int amplitude_pins[amplitude_pin_num] = { A1, A2, A3, A6, A7 };
+const int amplitude_pins[amplitude_pin_num] = { A1, A2, A3, A5, A4 };
 
 
 bool is_pulse_ready = false;
@@ -108,6 +108,7 @@ void loop() {
   }
 
   if (Serial.available()) {  //check to see if new parameters have been input
+    // channel pulse_width frequency amplitude lagging_amplitude
     Serial.readBytes(valin, in_size);
     Serial.println("You entered: ");
     tokenize(valin, ' ');
@@ -119,12 +120,11 @@ void loop() {
     Serial.println("Falling Amplitude: " + String(parameters[3][fes_channel]));
     Serial.println("Falling Pulse Width: " + String(parameters[4][fes_channel]));
     Serial.println("Period: " + String(periods[fes_channel]));
-
   }
 
 
   time_total = micros();
-  for (int i = 0; i < channels; i++) {
+  for(int i = 0; i < channels; i++) {
     if (freq[i] != 0 && amp[i] != 0 && pulse_width[i] != 0) {
       // time_diff_pwm[i] = time_total - time_curr_pwm[i];
       if(time_total > time_of_next_pulse[i] && fes_on) {
@@ -161,7 +161,7 @@ void send_pulse(int address) {
   for (int i = 0; i < amplitude_pin_num; i++) {
     digitalWrite(amplitude_pins[i], (amp_2[address] >> i) & 1);
   }
-  delayMicroseconds(50);
+  // delayMicroseconds(50);
   digitalWrite(anode_pin, HIGH);
   delayMicroseconds(pulse_width_2[address]);
   digitalWrite(anode_pin, LOW);
