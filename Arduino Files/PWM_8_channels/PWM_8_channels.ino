@@ -110,16 +110,16 @@ void loop() {
   if (Serial.available()) {  //check to see if new parameters have been input
     // channel pulse_width frequency amplitude lagging_amplitude
     Serial.readBytes(valin, in_size);
-    Serial.println("You entered: ");
+    // Serial.println("You entered: ");
     tokenize(valin, ' ');
     time_of_next_pulse[fes_channel] = time_total + periods[fes_channel];
-    Serial.println("Channel: " + String(fes_channel));
-    Serial.println("Pulse Width: " + String(parameters[0][fes_channel]));
-    Serial.println("Frequency: " + String(parameters[1][fes_channel]));
-    Serial.println("Amplitude: " + String(parameters[2][fes_channel]));
-    Serial.println("Falling Amplitude: " + String(parameters[3][fes_channel]));
-    Serial.println("Falling Pulse Width: " + String(parameters[4][fes_channel]));
-    Serial.println("Period: " + String(periods[fes_channel]));
+    // Serial.println("Channel: " + String(fes_channel));
+    // Serial.println("Pulse Width: " + String(parameters[0][fes_channel]));
+    // Serial.println("Frequency: " + String(parameters[1][fes_channel]));
+    // Serial.println("Amplitude: " + String(parameters[2][fes_channel]));
+    // Serial.println("Falling Amplitude: " + String(parameters[3][fes_channel]));
+    // Serial.println("Falling Pulse Width: " + String(parameters[4][fes_channel]));
+    // Serial.println("Period: " + String(periods[fes_channel]));
   }
 
 
@@ -190,7 +190,7 @@ void tokenize(char* str, char delimiter) {
     pulse_width_2[fes_channel] = pulse_width[fes_channel] * amp[fes_channel] / amp_2[fes_channel];
   }
   if(freq[fes_channel] != 0){
-    Serial.println(freq[fes_channel]);
+    // Serial.println(freq[fes_channel]);
     periods[fes_channel] = us_per_sec / freq[fes_channel];
   }
   else{

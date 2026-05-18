@@ -23,6 +23,7 @@ def send_message(ser, message):
         message_str = str(message)
 
     # Append newline for Arduino parsing
+    print(message_str)
     message_bytes = (message_str + "\n").encode('utf-8')
     # print(message_bytes)
 
@@ -33,17 +34,13 @@ def send_message(ser, message):
 
 
 def main():
-    ser = serial.Serial(port="COM6", baudrate=115200)
-    
-    for i in range(1,8):
-        send_message(ser, np.array([i] + preset[i]))
-        time.sleep(0.5)
-        input = ser.read_all().decode("utf-8").strip()
-        print(input)
-        time.sleep(0.5)
-
+    with serial.Serial(port="COM8", baudrate=115200) as ser:
+        time.sleep(2)
+        for i in range(0,8):
+            message = f"{i} {str(np.int32(preset[i]))[1:-1]}"
+            print(message)
+            ser.write(message.encode("utf-8"))
+            time.sleep(1.5)
 if __name__ == "__main__":
     main()
-    # ser = serial.Serial(port="COM6", baudrate=115200)
-
-    # send_message(ser, "2 500 50 5 5")
+    i = 0
