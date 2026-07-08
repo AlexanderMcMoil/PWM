@@ -188,17 +188,48 @@ QRadioButton{
             
             if not self.is_active[i]:
                 print("Channel Inactive")
-                self.serial.write(f"{i} 0 0 0 0\n".encode("utf-8"))
+                message = pack_serial_data(i, 0, 0, 0, 0)
+                self.serial.write(message)
+                # self.serial.write(f"{i} 0 0 0 0\n".encode("utf-8"))
 
                 return
             if 0 in self.channel_parameters[i][0:3]:
                 print("A Channel Parameter is set to 0. Cannot turn channel on")
                 return
-            print(f"{i} {str(np.int32(self.channel_parameters[i]))[1:-1]}\n")
-            self.serial.write(f"{i} {str(np.int32(self.channel_parameters[i]))[1:-1]}\n".encode("utf-8"))
-        except:
-            print("Couldn't send the data")
+            message = pack_serial_data(i, (int(self.channel_parameters[i][0])), (int(self.channel_parameters[i][1])), (int(self.channel_parameters[i][2])), (int(self.channel_parameters[i][3])))
+            self.serial.write(message)
+        except Exception as e:
+            print(f"Couldn't send the data: {e}")
 
+
+def pack_serial_data(channel, pulse_width, frequency, leading_amplitude, lagging_amplitude):
+    """
+    Packs 5 parameters into a 4-byte array for serial transmission.
+    
+    Bit layout (32 bits total):
+    [31:29] : Padding (3 bits) - set to 0
+    [29:24] : lagging_amplitude (5 bits)
+    [23:18] : frequency (6 bits)
+    [17:8]  : pulse_width (10 bits)
+    [7:3]   : leading_amplitude (5 bits)
+    [2:0]   : channel (3 bits)
+    """
+    
+    # 1. Mask inputs to ensure they strictly fit within their bit limits
+    channel &= 0x07             # 3 bits (max 7)
+    leading_amplitude &= 0x1F   # 5 bits (max 31)
+    pulse_width &= 0x3FF        # 10 bits (max 1023)
+    frequency &= 0x3F           # 6 bits (max 63)
+    lagging_amplitude &= 0x1F   # 5 bits (max 31)
+    
+    # 2. Shift and combine using bitwise OR
+    packed_data = (channel) | \
+                  (leading_amplitude << 3) | \
+                  (pulse_width << 8) | \
+                  (frequency << 18) | \
+                  (lagging_amplitude << 24)
+                  
+    return packed_data.to_bytes(4, byteorder='big')
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = Slider_UI()

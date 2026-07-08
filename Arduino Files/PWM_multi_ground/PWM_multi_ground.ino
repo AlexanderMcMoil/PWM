@@ -1,4 +1,3 @@
-
 // int parameters[8][3] = {
 //   {50, 20, 0},
 //   {0, 0, 0},
@@ -10,33 +9,34 @@
 //   {0, 0, 0}
 // };
 
-int parameters[5][8] = {
-  { 0, 0, 0, 0, 0, 0, 0, 0 },  // pulse width
-  { 0, 0, 0, 0, 0, 0, 0, 0 },  // frequency
-  { 0, 0, 0, 0, 0, 0, 0, 0 },  // amplitude
-  { 0, 0, 0, 0, 0, 0, 0, 0 },  // falling amplitude
-  { 0, 0, 0, 0, 0, 0, 0, 0 },  // falling pulse width
+int parameters[7][8] = {
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // channel address       0-7       3 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // ground address        0-3       2 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // pulse width           0-~1000   ~10 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // frequency             0-~200    ~8 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // amplitude             0-31      5 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // falling amplitude     0-31      5 bits
+  { 0, 0, 0, 0, 0, 0, 0, 0 },  // falling pulse width   
 };
 
 #define us_per_sec 1000000L
-#define pulse_width parameters[0]
-#define freq parameters[1]
-#define amp parameters[2]
-#define amp_2 parameters[3]
-#define pulse_width_2 parameters[4]
-
-
+#define active_address parameters[0]
+#define ground_address parameters[1]
+#define pulse_width parameters[2]
+#define freq parameters[3]
+#define amp parameters[4]
+#define amp_2 parameters[5]
+#define pulse_width_2 parameters[6]
 
 // #define period us_per_sec/freq
 
 const int channels = 8;
 
-long periods[channels] = { 0 , 0, 0, 0, 0, 0, 0, 0 };
-int enable_pin = 7;
+long periods[channels] = { us_per_sec / freq[0] , 0, 0, 0, 0, 0, 0, 0 };
+// int enable_pin = 7;
 
-const int in_size = 32;
-char valin[in_size] = { 0 };
-uint8_t buffer[4];
+const int in_size = 5;
+uint8_t valin[in_size] = { 0 };
 
 unsigned long time_diff_pwm[channels] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 unsigned long time_curr_pwm[channels] = { 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L };
@@ -53,9 +53,12 @@ const int cath_pin = 7;
 const int anode_pin = 8;
 // const int amp_pin = 9;  //Arduino DAC is 10 bits ie 0-1023
 
+
 const int address_pins[3] = { 6, 5, 4 };  // A, B, C
+const int address_ground_pins[2] = {3, 2};   // A, B
 const int amplitude_pin_num = 5;
 const int amplitude_pins[amplitude_pin_num] = { A1, A2, A3, A5, A4 };
+
 
 
 bool is_pulse_ready = false;
@@ -65,11 +68,6 @@ int max_wait_time_index = 0;
 int fes_channel = 0;
 bool fes_on = true;
 
-long time = 0;
-long time2 = 0;
-long time3 = 0;
-long time4 = 0;
-
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -77,12 +75,16 @@ void setup() {
   Serial.println("Arduino Ready!");
   pinMode(cath_pin, OUTPUT);
   pinMode(anode_pin, OUTPUT);
-  pinMode(enable_pin, OUTPUT);
+  // pinMode(enable_pin, OUTPUT);
   // pinMode(6, OUTPUT);
   // digitalWrite(6, HIGH);
   for (int i = 0; i < 3; i++) {
     pinMode(address_pins[i], OUTPUT);
     digitalWrite(address_pins[i], LOW);
+  }
+  for(int i = 0; i < 2; i++){
+    pinMode(address_ground_pins[i], OUTPUT);
+    digitalWrite(address_ground_pins[i], LOW);
   }
   for (int i = 0; i < amplitude_pin_num; i++) {
     pinMode(amplitude_pins[i], OUTPUT);
@@ -90,20 +92,8 @@ void setup() {
   }
   digitalWrite(cath_pin, LOW);
   digitalWrite(anode_pin, LOW);
-  digitalWrite(enable_pin, LOW);
+  // digitalWrite(enable_pin, LOW);
 
-  // analogWrite(amp_pin, 100);
-  // noInterrupts();
-  // TCCR1A =
-  //   1 << COM1A1 | 1 << WGM10;
-  // TCCR1B =
-  //   1 << WGM12 | 1 << CS10;
-  // DDRB =
-  //   1 << DDB1;
-  // OCR1A = 18;
-  // interrupts();
-  // pinMode(9, OUTPUT);
-  // digitalWrite(9, HIGH);
 }
 
 void loop() {
@@ -112,18 +102,13 @@ void loop() {
     while (true) {}
     return;
   }
-  // time = time_total;
+
   if (Serial.available()) {  //check to see if new parameters have been input
-    // channel pulse_width frequency amplitude lagging_amplitude
-    // time4 = micros();
-    // Serial.readBytesUntil('\n', valin, in_size);
-    Serial.readBytes(buffer, 4);
-    // time2 = micros();
-    
+    // channel  pulse_width frequency amplitude lagging_amplitude
+    Serial.readBytes(valin, in_size);
     // Serial.println("You entered: ");
-    tokenize(buffer);
+    tokenize(valin);
     time_of_next_pulse[fes_channel] = time_total + periods[fes_channel];
-    // Serial.println(packed_data);
     // Serial.println("Channel: " + String(fes_channel));
     // Serial.println("Pulse Width: " + String(parameters[0][fes_channel]));
     // Serial.println("Frequency: " + String(parameters[1][fes_channel]));
@@ -131,10 +116,6 @@ void loop() {
     // Serial.println("Falling Amplitude: " + String(parameters[3][fes_channel]));
     // Serial.println("Falling Pulse Width: " + String(parameters[4][fes_channel]));
     // Serial.println("Period: " + String(periods[fes_channel]));
-    // time3 = micros();
-    // Serial.println(time2 - time);
-    // Serial.println(time3 - time);
-    // Serial.println(time4 - time);
   }
 
 
@@ -164,7 +145,10 @@ void loop() {
 void send_pulse(int address) {
   // digitalWrite(enable_pin, LOW);
   for (int i = 0; i < 3; i++) {
-    digitalWrite(address_pins[i], (address >> i) & 1);
+    digitalWrite(address_pins[i], (active_address[address] >> i) & 1);
+  }
+  for(int i = 0; i < 2; i++){
+    digitalWrite(address_ground_pins[i], (ground_address[address] >> i) & 1);
   }
   for (int i = 0; i < amplitude_pin_num; i++) {
     digitalWrite(amplitude_pins[i], (amp[address] >> i) & 1);
@@ -181,8 +165,6 @@ void send_pulse(int address) {
   delayMicroseconds(pulse_width_2[address]);
   digitalWrite(anode_pin, LOW);
   delayMicroseconds(50);
-  // digitalWrite(enable_pin, HIGH);
-  // OCR1A = amp[address];
 }
 
 void tokenize(uint8_t* buffer) {
@@ -194,21 +176,18 @@ void tokenize(uint8_t* buffer) {
   // char* token = strtok(str, " ");
   // fes_channel = atoi(token);
   // token = strtok(NULL, " ");
-  // for (int i = 0; i < 4; i++) {
+  // for (int i = 0; i < 6; i++) {
   //   parameters[i][fes_channel] = atoi(token);
   //   token = strtok(NULL, " ");
   // }
-  // uint32_t packed_data = ((uint32_t)buffer[0] << 24) |
-  //                        ((uint32_t)buffer[1] << 16) |
-  //                        ((uint32_t)buffer[2] << 8)  |
-  //                        ((uint32_t)buffer[3]);
-
-  fes_channel               = (buffer[3])          & 0x07;   // Mask: 3 bits  (max 7)
-  amp[fes_channel]          = (buffer[3] >> 3)     & 0x1F;   // Mask: 5 bits  (max 31)
-  pulse_width[fes_channel]  = (buffer[2])          & 0xFF;  // Mask: 10 bits (max 1023)
-  pulse_width[fes_channel]  |= (buffer[1] & 0x03) << 8;
-  amp_2[fes_channel]        = (buffer[1] >> 2)     & 0x1F;   // Mask: 5 bits
-  freq[fes_channel]         = (buffer[0])          & 0xFF;   // Mask: 8 bits  (no shift needed)
+  fes_channel               = (buffer[4])          & 0x07;   // Mask: 3 bits  (max 7)
+  amp[fes_channel]          = (buffer[4] >> 3)     & 0x1F;   // Mask: 5 bits  (max 31)
+  pulse_width[fes_channel]  = (buffer[3])          & 0xFF;  // Mask: 10 bits (max 1023)
+  pulse_width[fes_channel]  |= (buffer[2] & 0x03) << 8;
+  freq[fes_channel]         = (buffer[2] >> 2)     & 0x3F;   // Mask: 6 bits  (max 63)
+  amp_2[fes_channel]        = (buffer[1])          & 0x1F;   // Mask: 5 bits  (no shift needed)
+  active_address[fes_channel] = (buffer[1] >> 5)  & 0x07    // 3 bits
+  ground_address[fes_channel] = (buffer[0])         & 0x03    // 2 bits
 
   if(amp_2[fes_channel] == 0){
     pulse_width_2[fes_channel] = 0;
